@@ -153,8 +153,12 @@ int fl2000_mmap(struct file * file, struct vm_area_struct *vma)
 	 * vm_insert_page requires VM_PFNMAP be cleared, and called
 	 * with vma->vm_mm->mmap held.
 	 */
-	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
-	vma->vm_flags &= ~VM_PFNMAP;
+	// vma->vm_flags has been made read-only on newer kernel versions.
+	// vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
+	// vma->vm_flags &= ~VM_PFNMAP;
+
+	vm_flags_set(vma, VM_DONTEXPAND | VM_DONTDUMP);
+	vm_flags_clear(vma, VM_PFNMAP);
 
 	for (i = 0; i < num_pages; i++) {
 		unsigned long usr_addr = vma->vm_start + (i << PAGE_SHIFT);

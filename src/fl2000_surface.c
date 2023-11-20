@@ -8,6 +8,9 @@
 #include "fl2000_include.h"
 #include <linux/version.h>
 
+// FOLL_TOUCH is no longer a global enum.
+#define FOLL_TOUCH 0x02
+
 /*
  * work-around get_user_pages API changes
  * for kernel version < 4.6.0
@@ -33,35 +36,13 @@ long fl2000_get_user_pages(
 	unsigned long start, unsigned long nr_pages,
 	struct page **pages, struct vm_area_struct **vmas)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
-	return get_user_pages(
-		current,
-		current->mm,
-		start,
-		nr_pages,
-		0,
-		0,
-		pages,
-		vmas
-		);
-#elif LINUX_VERSION_CODE <= KERNEL_VERSION(4,8,17)
-	return get_user_pages(
-		start,
-		nr_pages,
-		0,
-		0,
-		pages,
-		vmas
-		);
-#else
+	// The arguements for this function have been changed in newer linux kernels. Older kernels (<5.0.0) are no longer supported.
 	return get_user_pages(
 		start,
 		nr_pages,
 		FOLL_GET | FOLL_TOUCH,
-		pages,
-		vmas
+		pages
 		);
-#endif
 }
 
 int fl2000_surface_pin_down(
@@ -134,13 +115,17 @@ int fl2000_surface_pin_down(
 		 */
 		vma = find_vma(current->mm, surface->user_buffer);
 		old_flags = vma->vm_flags;
-		vma->vm_flags &= ~(VM_IO | VM_PFNMAP);
+		// vma->vm_flags has been made read-only on newer kernel versions.
+		// vma->vm_flags &= ~(VM_IO | VM_PFNMAP);
+		vm_flags_clear(vma, VM_IO | VM_PFNMAP);
 		pages_pinned = fl2000_get_user_pages(
 			surface->user_buffer,
 			nr_pages,
 			pages,
 			NULL);
-		vma->vm_flags = old_flags;
+		// vma->vm_flags has been made read-only on newer kernel versions.
+		// vma->vm_flags = old_flags;
+		vm_flags_init(vma, old_flags);
 		mmap_read_unlock(current->mm);
 		if (pages_pinned <= 0) {
 			dbg_msg(TRACE_LEVEL_ERROR, DBG_PNP,
