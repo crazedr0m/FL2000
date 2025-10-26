@@ -36,13 +36,40 @@ long fl2000_get_user_pages(
 	unsigned long start, unsigned long nr_pages,
 	struct page **pages, struct vm_area_struct **vmas)
 {
-	// The arguements for this function have been changed in newer linux kernels. Older kernels (<5.0.0) are no longer supported.
+	// The arguments for this function have been changed in newer linux kernels.
+	// Support for older kernels has been added back for compatibility.
+	
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+	// For kernel version 4.9.0 and later
 	return get_user_pages(
 		start,
 		nr_pages,
 		FOLL_GET | FOLL_TOUCH,
 		pages
 		);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,6,0)
+	// For kernel version 4.6.0 to 4.8.17
+	return get_user_pages(
+		start,
+		nr_pages,
+		1,  // write
+		0,  // force
+		pages,
+		vmas
+		);
+#else
+	// For kernel version < 4.6.0
+	return get_user_pages(
+		current,
+		current->mm,
+		start,
+		nr_pages,
+		1,  // write
+		0,  // force
+		pages,
+		vmas
+		);
+#endif
 }
 
 int fl2000_surface_pin_down(
